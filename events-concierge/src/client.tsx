@@ -95,11 +95,12 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Connect to the current domain (works for both local dev and production)
+  // Always connect to the deployed Workers domain
   const agent = useAgent({
     agent: "guest",
     name: "default",
-    host: window.location.hostname === 'localhost' ? 'localhost:8787' : window.location.hostname,
-    secure: window.location.protocol === 'https:'
+    host: 'events-concierge.angela-temp.workers.dev',
+    secure: true
   });
 
   const addMessage = useCallback((message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
