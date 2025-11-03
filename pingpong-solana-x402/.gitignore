@@ -1,0 +1,5 @@
+node_modules
+.env
+feepayer.json
+.wrangler
+.dev.vars

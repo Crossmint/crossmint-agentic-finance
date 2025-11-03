@@ -1,0 +1,32 @@
+{
+  "name": "pingpong-solana-x402",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@crossmint/client-sdk-react-ui": "^2.5.11",
+    "@crossmint/wallets-sdk": "^0.14.3",
+    "@solana/kit": "^2.1.1",
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "buffer": "^6.0.3",
+    "ky": "^1.2.4",
+    "process": "^0.11.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "x402": "^0.7.1",
+    "x402-fetch": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}

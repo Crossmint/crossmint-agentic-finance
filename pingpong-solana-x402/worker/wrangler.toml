@@ -1,0 +1,13 @@
+name = "pingpong-solana-x402-worker"
+main = "src/index.ts"
+compatibility_date = "2024-10-22"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NETWORK = "solana-devnet"
+PING_PRICE_USDC = "0.000001"
+FACILITATOR_URL = "https://x402.org/facilitator"
+# Optional: if your facilitator requires auth, set a bearer token or headers
+# FACILITATOR_AUTH = ""
+# The facilitator fee-payer public key to include in requirements.extra.feePayer
+FEE_PAYER_PUBKEY = ""
