@@ -243,33 +243,32 @@ export default {
           existingUser = await env.SECRETS.get(`usersByHash:${urlSafeId}`, { type: "json" }) as { walletAddress?: string, urlSafeId?: string, userId?: string } | null;
         }
         if (existingUser) {
-          // User exists - verify wallet matches
-          if (existingUser.walletAddress !== walletAddress) {
-            return new Response(
-              JSON.stringify({
-                error: "User already exists with different wallet address",
-                existingWallet: existingUser.walletAddress
-              }),
-              { status: 409, headers: { "Content-Type": "application/json", ...CORS_HEADERS } }
-            );
-          }
-
-          // User exists with same wallet - migrate if needed and return existing MCP URL
+          // User exists - upsert wallet address if different
           const workerHost = request.headers.get("cf-worker");
           const origin = workerHost ? `https://${workerHost}` : new URL(request.url).origin;
           const existingUrlSafeId = existingUser.urlSafeId || urlSafeId;
 
-          // Migrate old users: add urlSafeId and usersByHash mapping if missing
+          // If wallet address changed, update it (upsert behavior)
+          const walletChanged = existingUser.walletAddress !== walletAddress;
+          if (walletChanged) {
+            console.log(`🔄 Updating wallet address for user ${userId}: ${existingUser.walletAddress} → ${walletAddress}`);
+          }
+
+          // Update both KV keys with the new wallet address
+          const updatedRecord = {
+            userId: existingUser.userId || userId,
+            walletAddress, // Always use the new wallet address
+            urlSafeId: existingUrlSafeId,
+            createdAt: (existingUser as any).createdAt || Date.now(),
+            updatedAt: walletChanged ? Date.now() : (existingUser as any).updatedAt,
+            createdBy: (existingUser as any).createdBy || "crossmint-auth"
+          };
+
+          await env.SECRETS.put(`users:${userId}`, JSON.stringify(updatedRecord));
+          await env.SECRETS.put(`usersByHash:${existingUrlSafeId}`, JSON.stringify(updatedRecord));
+
+          // If this was a migration case, log it
           if (!existingUser.urlSafeId) {
-            const migratedRecord = {
-              userId: existingUser.userId || userId,
-              walletAddress: existingUser.walletAddress,
-              urlSafeId: existingUrlSafeId,
-              createdAt: (existingUser as any).createdAt || Date.now(),
-              createdBy: (existingUser as any).createdBy || "crossmint-auth"
-            };
-            await env.SECRETS.put(`users:${userId}`, JSON.stringify(migratedRecord));
-            await env.SECRETS.put(`usersByHash:${existingUrlSafeId}`, JSON.stringify(migratedRecord));
             console.log(`🔄 Migrated user: ${userId} → ${existingUrlSafeId}`);
           }
 
@@ -278,7 +277,7 @@ export default {
             mcpUrl: `${origin}/mcp/users/${existingUrlSafeId}`,
             walletAddress,
             urlSafeId: existingUrlSafeId,
-            message: "MCP already exists"
+            message: walletChanged ? "MCP updated with new wallet address" : "MCP already exists"
           }), { headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
         }
 
