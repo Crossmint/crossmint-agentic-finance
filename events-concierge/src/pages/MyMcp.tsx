@@ -12,6 +12,50 @@ const CLIENT_KEY = VITE_ENV.VITE_CROSSMINT_CLIENT_KEY || VITE_ENV.VITE_CROSSMINT
 function MyMcpInner() {
   const { login, logout, user, jwt } = useAuth();
 
+  // Minimal landing page when user is not authenticated
+  if (!user) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexDirection: 'column' }}>
+
+        {/* Center card */}
+        <div style={{ background: 'white', width: '100%', maxWidth: '520px', margin: '0 1rem', borderRadius: '16px', boxShadow: '0 20px 40px rgba(2, 6, 23, 0.08)', padding: '40px 32px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+            <img src="/calendar.svg" alt="Calendar" width={88} height={88} style={{ display: 'block' }} />
+          </div>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 10px 0' }}>Event Host Dashboard</h1>
+
+          <div style={{ marginTop: '22px' }}>
+            <button
+              onClick={login}
+              style={{
+                background: '#2563eb',
+                color: 'white',
+                fontWeight: 700,
+                border: 'none',
+                borderRadius: '999px',
+                padding: '12px 24px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                width: '160px',
+                boxShadow: '0 6px 14px rgba(37, 99, 235, 0.3)'
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
+              onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
+            >
+              Sign in
+            </button>
+          </div>
+        </div>
+
+        {/* Brand below card */}
+        <div style={{ marginTop: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>Powered by</span>
+          <img src="/crossmint.png" alt="Crossmint" style={{ height: '14px', display: 'inline-block' }} />
+        </div>
+      </div>
+    );
+  }
+
   // Wallet & MCP state
   const [wallet, setWallet] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -22,9 +66,8 @@ function MyMcpInner() {
   const [mcpUrl, setMcpUrl] = useState<string | null>(null);
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'setup' | 'dashboard'>('setup');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [logsCollapsed, setLogsCollapsed] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Events state
   const [events, setEvents] = useState<any[]>([]);
@@ -238,19 +281,14 @@ function MyMcpInner() {
     }
   }, [mcpUrl, wallet, user?.email, fetchEvents]);
 
-  // Auto-switch to dashboard when setup is complete
-  useEffect(() => {
-    if (user && wallet && mcpUrl) {
-      setActiveTab('dashboard');
-    }
-  }, [user, wallet, mcpUrl]);
+  // Single-page dashboard (no Setup tab) – nothing to switch
 
   const totalRsvps = events.reduce((sum, e) => sum + (e.rsvpCount || 0), 0);
   const setupComplete = !!(user && wallet && mcpUrl);
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-      {/* Header with Tabs */}
+      {/* Header (no tabs) */}
       <div style={{
         background: 'white',
         borderBottom: '1px solid #e2e8f0',
@@ -264,102 +302,70 @@ function MyMcpInner() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a', fontWeight: 600 }}>
               Event Host Dashboard
             </h1>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             {user && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: '#e2e8f0',
+                  color: '#0f172a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '0.875rem'
+                }}>
+                  {(user.email || '?')[0]?.toUpperCase()}
+                </div>
               <span style={{
-                background: '#dcfce7',
-                color: '#166534',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '999px',
-                fontSize: '0.75rem',
+                  color: '#0f172a',
+                  fontSize: '0.875rem',
                 fontWeight: 600
               }}>
                 {user.email}
               </span>
-            )}
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            )}
             <a
               href="/"
               style={{
-                padding: '0.625rem 1.25rem',
+                padding: '0.5rem 0.9rem',
                 background: 'white',
                 color: '#3b82f6',
                 borderRadius: '8px',
                 textDecoration: 'none',
                 fontWeight: 600,
                 fontSize: '0.875rem',
-                border: '1px solid #e2e8f0',
-                transition: 'all 0.2s'
+                border: '1px solid #e2e8f0'
               }}
             >
-              ← Back to App
+              Back to App
             </a>
             {user && (
               <button
                 onClick={logout}
                 style={{
-                  padding: '0.625rem 1.25rem',
+                  padding: '0.5rem 0.9rem',
                   background: 'white',
                   color: '#ef4444',
                   border: '1px solid #e2e8f0',
                   borderRadius: '8px',
                   fontWeight: 600,
                   fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  cursor: 'pointer'
                 }}
               >
                 Logout
               </button>
             )}
           </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div style={{
-          display: 'flex',
-          gap: '0.5rem',
-          padding: '0 2rem',
-          borderBottom: '1px solid #e2e8f0'
-        }}>
-          <button
-            onClick={() => setActiveTab('setup')}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'setup' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'setup' ? '#3b82f6' : '#64748b',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Setup {!setupComplete && '(In Progress)'}
-          </button>
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            disabled={!setupComplete}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'dashboard' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'dashboard' ? '#3b82f6' : '#64748b',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              cursor: setupComplete ? 'pointer' : 'not-allowed',
-              opacity: setupComplete ? 1 : 0.5,
-              transition: 'all 0.2s'
-            }}
-          >
-            Dashboard
-          </button>
         </div>
       </div>
 
@@ -381,294 +387,15 @@ function MyMcpInner() {
         </div>
       ) : null}
 
-      {/* Tab Content */}
+      {/* Main Content (Dashboard only) */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative' }}>
-        {/* Main Content Area (both tabs) */}
         <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
-          marginRight: logsCollapsed ? 0 : '400px'
+          overflow: 'hidden'
         }}>
-          {/* Setup Tab */}
-          {activeTab === 'setup' && (
-            <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-              <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#0f172a' }}>
-                  Get Started
-                </h2>
-                <p style={{ color: '#64748b', marginBottom: '2rem' }}>
-                  Complete these steps to create your event RSVP platform
-                </p>
-
-                {/* Compact Setup Steps */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {/* Step 1: Login */}
-                  <div style={{
-                    background: 'white',
-                    borderRadius: '8px',
-                    padding: '1.5rem',
-                    border: user ? '2px solid #22c55e' : '2px solid #e2e8f0'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: user ? '0' : '1rem' }}>
-                      <div style={{
-                        width: '2rem',
-                        height: '2rem',
-                        borderRadius: '50%',
-                        background: user ? '#22c55e' : '#cbd5e1',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        flexShrink: 0
-                      }}>
-                        {user ? '✓' : '1'}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: 600 }}>
-                          Login with Crossmint
-                        </h3>
-                        {user && (
-                          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#64748b' }}>
-                            Logged in as {user.email}
-                          </p>
-                        )}
-                      </div>
-                      {!user ? (
-                        <button
-                          onClick={login}
-                          style={{
-                            padding: '0.625rem 1.25rem',
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Login
-                        </button>
-                      ) : (
-                        <button
-                          onClick={logout}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            background: 'white',
-                            color: '#64748b',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '0.75rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Logout
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Step 2: Wallet */}
-                  <div style={{
-                    background: 'white',
-                    borderRadius: '8px',
-                    padding: '1.5rem',
-                    border: wallet ? '2px solid #22c55e' : '2px solid #e2e8f0',
-                    opacity: !user ? 0.5 : 1
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{
-                        width: '2rem',
-                        height: '2rem',
-                        borderRadius: '50%',
-                        background: wallet ? '#22c55e' : isProcessing ? '#3b82f6' : '#cbd5e1',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        flexShrink: 0
-                      }}>
-                        {wallet ? '✓' : isProcessing ? '...' : '2'}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: 600 }}>
-                          {wallet ? 'Wallet Ready' : isProcessing ? 'Initializing Wallet...' : 'Initialize Wallet'}
-                        </h3>
-                        {wallet && (
-                          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
-                            {wallet.address}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* OTP Flow */}
-                    {otpRequired && (
-                      <div style={{
-                        marginTop: '1rem',
-                        padding: '1rem',
-                        background: '#fffbeb',
-                        border: '1px solid #fbbf24',
-                        borderRadius: '8px'
-                      }}>
-                        <div style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#92400e', fontSize: '0.875rem' }}>
-                          Email OTP Required
-                        </div>
-                        {!otpSent ? (
-                          <button
-                            onClick={sendOtp}
-                            style={{
-                              width: '100%',
-                              padding: '0.625rem',
-                              background: '#f59e0b',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontWeight: 600,
-                              fontSize: '0.875rem',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Send OTP
-                          </button>
-                        ) : (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <input
-                              value={currentOtp}
-                              onChange={(e) => setCurrentOtp(e.target.value)}
-                              maxLength={6}
-                              placeholder="Enter OTP"
-                              style={{
-                                flex: 1,
-                                padding: '0.625rem',
-                                border: '2px solid #fbbf24',
-                                borderRadius: '6px',
-                                fontSize: '0.875rem',
-                                textAlign: 'center'
-                              }}
-                            />
-                            <button
-                              onClick={submitOtp}
-                              disabled={currentOtp.length !== 6}
-                              style={{
-                                padding: '0.625rem 1rem',
-                                background: currentOtp.length === 6 ? '#22c55e' : '#9ca3af',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontWeight: 600,
-                                fontSize: '0.875rem',
-                                cursor: currentOtp.length === 6 ? 'pointer' : 'not-allowed'
-                              }}
-                            >
-                              Verify
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Step 3: MCP */}
-                  <div style={{
-                    background: 'white',
-                    borderRadius: '8px',
-                    padding: '1.5rem',
-                    border: mcpUrl ? '2px solid #22c55e' : '2px solid #e2e8f0',
-                    opacity: !wallet ? 0.5 : 1
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{
-                        width: '2rem',
-                        height: '2rem',
-                        borderRadius: '50%',
-                        background: mcpUrl ? '#22c55e' : wallet && !mcpUrl ? '#3b82f6' : '#cbd5e1',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        flexShrink: 0
-                      }}>
-                        {mcpUrl ? '✓' : wallet && !mcpUrl ? '...' : '3'}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: 600 }}>
-                          {mcpUrl ? 'MCP Endpoint Created' : wallet && !mcpUrl ? 'Creating MCP...' : 'Create MCP Endpoint'}
-                        </h3>
-                        {mcpUrl && (
-                          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                            {mcpUrl}
-                          </p>
-                        )}
-                      </div>
-                      {mcpUrl && (
-                        <button
-                          onClick={() => copyToClipboard(mcpUrl, 'MCP URL')}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            background: 'white',
-                            color: '#3b82f6',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '0.75rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Copy
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Success State */}
-                  {setupComplete && (
-                    <div style={{
-                      padding: '1.5rem',
-                      background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
-                      borderRadius: '8px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎉</div>
-                      <div style={{ fontSize: '1.125rem', fontWeight: 600, color: '#166534', marginBottom: '0.5rem' }}>
-                        Setup Complete!
-                      </div>
-                      <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#15803d' }}>
-                        Your event platform is ready to go
-                      </p>
-                      <button
-                        onClick={() => setActiveTab('dashboard')}
-                        style={{
-                          padding: '0.75rem 1.5rem',
-                          background: '#22c55e',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontWeight: 600,
-                          fontSize: '0.875rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Go to Dashboard →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Dashboard Tab */}
-          {activeTab === 'dashboard' && (
+          {/* Dashboard */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Stats Header (Sticky) */}
               <div style={{
@@ -681,38 +408,59 @@ function MyMcpInner() {
               }}>
                 <div style={{
                   flex: 1,
-                  minWidth: '200px',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  color: 'white',
-                  padding: '1.5rem',
-                  borderRadius: '8px'
+                  minWidth: '260px',
+                  background: 'white',
+                  border: '2px solid #e2e8f0',
+                  padding: '1.25rem 1.5rem',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 24px rgba(2,6,23,0.04)'
                 }}>
-                  <div style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.25rem' }}>Total Earnings</div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>${totalRevenue}</div>
+                  <div>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>Total Earnings</div>
+                    <div style={{ fontSize: '2.0rem', fontWeight: 700, color: '#0f172a' }}>${totalRevenue}</div>
+                  </div>
+                  <img src="/archive.svg" alt="Earnings" width={44} height={44} style={{ display: 'block' }} />
                 </div>
 
                 <div style={{
                   flex: 1,
-                  minWidth: '150px',
+                  minWidth: '260px',
                   background: 'white',
                   border: '2px solid #e2e8f0',
-                  padding: '1.5rem',
-                  borderRadius: '8px'
+                  padding: '1.25rem 1.5rem',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 24px rgba(2,6,23,0.04)'
                 }}>
-                  <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>Events Created</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>{events.length}</div>
+                  <div>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>Events created</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>{events.length}</div>
+                  </div>
+                  <img src="/calendar.svg" alt="Events" width={44} height={44} style={{ display: 'block' }} />
                 </div>
 
                 <div style={{
                   flex: 1,
-                  minWidth: '150px',
+                  minWidth: '260px',
                   background: 'white',
                   border: '2px solid #e2e8f0',
-                  padding: '1.5rem',
-                  borderRadius: '8px'
+                  padding: '1.25rem 1.5rem',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 24px rgba(2,6,23,0.04)'
                 }}>
-                  <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>Total RSVPs</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>{totalRsvps}</div>
+                  <div>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>Total RSVPs</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>{totalRsvps}</div>
+                  </div>
+                  <img src="/save.svg" alt="RSVPs" width={44} height={44} style={{ display: 'block' }} />
                 </div>
               </div>
 
@@ -723,6 +471,57 @@ function MyMcpInner() {
                 padding: '2rem',
                 background: '#f8fafc'
               }}>
+                {/* Connect MCP Panel */}
+                <div style={{
+                  marginBottom: '1.5rem',
+                  background: 'white',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '1rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem'
+                }}>
+                  <div style={{ fontWeight: 600, color: '#0f172a', minWidth: '110px' }}>Connect MCP</div>
+                  <input
+                    readOnly
+                    value={mcpUrl || 'Generating your personal MCP URL...'}
+                    style={{
+                      flex: 1,
+                      padding: '0.625rem 0.75rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontFamily: 'monospace',
+                      fontSize: '0.875rem',
+                      color: '#0f172a',
+                      background: '#f8fafc'
+                    }}
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!mcpUrl) return;
+                      try {
+                        await copyToClipboard(mcpUrl, 'MCP URL');
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1200);
+                      } catch {}
+                    }}
+                    disabled={!mcpUrl}
+                    style={{
+                      padding: '0.5rem 0.9rem',
+                      background: !mcpUrl ? '#f1f5f9' : copied ? '#22c55e' : '#e2e8f0',
+                      color: !mcpUrl ? '#94a3b8' : copied ? 'white' : '#0f172a',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      cursor: mcpUrl ? 'pointer' : 'not-allowed',
+                      transition: 'background 0.15s ease'
+                    }}
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -730,7 +529,7 @@ function MyMcpInner() {
                   marginBottom: '1.5rem'
                 }}>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#0f172a' }}>
-                    Your Events
+                    Your ongoing events
                   </h2>
                   <button
                     onClick={() => setShowCreateModal(true)}
@@ -752,7 +551,7 @@ function MyMcpInner() {
                     onMouseOut={(e) => e.currentTarget.style.background = '#3b82f6'}
                   >
                     <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>+</span>
-                    Create Event
+                    Create new event
                   </button>
                 </div>
 
@@ -798,185 +597,127 @@ function MyMcpInner() {
                     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                     gap: '1rem'
                   }}>
-                    {events.map((event) => (
-                      <div
-                        key={event.id}
-                        style={{
-                          background: 'white',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '12px',
-                          padding: '1.5rem',
-                          transition: 'all 0.2s',
-                          cursor: 'pointer'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.boxShadow = 'none';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'start',
-                          marginBottom: '1rem'
-                        }}>
-                          <div style={{ flex: 1, paddingRight: '1rem' }}>
-                            <h4 style={{
-                              margin: '0 0 0.5rem 0',
-                              fontSize: '1.125rem',
-                              fontWeight: 600,
-                              color: '#0f172a',
-                              lineHeight: '1.3'
-                            }}>
-                              {event.title}
-                            </h4>
-                            <div style={{
-                              fontSize: '0.8125rem',
-                              color: '#64748b',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '0.25rem'
-                            }}>
-                              <div>📅 {new Date(event.date).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}</div>
-                              <div>👥 {event.capacity === 0 ? 'Unlimited capacity' : `${event.capacity} spots`}</div>
+                    {events.map((event) => {
+                      const d = new Date(event.date);
+                      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+                      const day = d.toLocaleDateString('en-US', { day: '2-digit' });
+                      const full = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                      const capacityText = event.capacity === 0 ? 'Unlimited capacity' : `${event.capacity} max`;
+                      const priceText = `$${Number(event.price).toFixed(2)}`;
+
+                      return (
+                        <div
+                          key={event.id}
+                          style={{
+                            background: 'white',
+                            borderRadius: '16px',
+                            padding: '16px',
+                            boxShadow: '0 6px 18px rgba(2,6,23,0.06)',
+                            transition: 'all 0.2s',
+                            cursor: 'pointer'
+                          }}
+                          onMouseOver={(e) => {
+                            (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 20px rgba(0,0,0,0.12)';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                          }}
+                          onMouseOut={(e) => {
+                            (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 18px rgba(2,6,23,0.06)';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                          }}
+                        >
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            {/* Left date pill */}
+                            <div style={{ width: '44px', textAlign: 'center', color: '#64748b' }}>
+                              <div style={{ fontSize: '12px' }}>{weekday}</div>
+                              <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>{day}</div>
+                            </div>
+
+                            {/* Right content */}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '12px', color: '#64748b' }}>{full}</div>
+                              <div style={{
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                marginTop: '2px'
+                              }}>
+                                {event.title}
+                              </div>
+
+                              {/* Info rows */}
+                              <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <img src="/users.svg" width={16} height={16} alt="capacity" />
+                                  <span style={{ color: '#334155', fontSize: '14px' }}>{capacityText}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <img src="/clock.svg" width={16} height={16} alt="time" />
+                                  <span style={{ color: '#334155', fontSize: '14px' }}>{time}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <img src="/dollar.svg" width={15} height={15} alt="price" />
+                                  <span style={{ color: '#1A73E8', fontSize: '14px' }}>{priceText}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div style={{
-                            textAlign: 'right',
-                            background: '#f0fdf4',
-                            padding: '0.75rem',
-                            borderRadius: '8px'
-                          }}>
-                            <div style={{ fontSize: '0.75rem', color: '#15803d', marginBottom: '0.25rem' }}>
-                              Revenue
-                            </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#22c55e' }}>
-                              ${event.revenue}
-                            </div>
+
+                          {/* Divider */}
+                          <div style={{ height: '1px', background: '#e5e7eb', margin: '12px 0 8px' }} />
+
+                          {/* ID row (copyable) */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>ID</span>
+                            <span
+                              style={{
+                                fontFamily: 'monospace',
+                                fontSize: '12px',
+                                color: '#64748b',
+                                cursor: 'pointer',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                transition: 'all 0.2s',
+                                maxWidth: '220px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                              onClick={() => {
+                                navigator.clipboard.writeText(event.id);
+                                const span = document.querySelector(`[data-host-event-id="${event.id}"]`) as HTMLElement;
+                                if (span) {
+                                  const originalText = span.textContent;
+                                  span.textContent = 'Copied!';
+                                  span.style.color = '#10b981';
+                                  setTimeout(() => {
+                                    span.textContent = originalText;
+                                    span.style.color = '#64748b';
+                                  }, 1000);
+                                }
+                              }}
+                              onMouseOver={(e) => {
+                                (e.currentTarget as HTMLElement).style.background = '#f1f5f9';
+                                (e.currentTarget as HTMLElement).style.color = '#475569';
+                              }}
+                              onMouseOut={(e) => {
+                                (e.currentTarget as HTMLElement).style.background = '#f8fafc';
+                                (e.currentTarget as HTMLElement).style.color = '#64748b';
+                              }}
+                              data-host-event-id={event.id}
+                              title="Click to copy full event ID"
+                            >
+                              {event.id}
+                            </span>
                           </div>
                         </div>
-
-                        <p style={{
-                          margin: '0 0 1rem 0',
-                          fontSize: '0.875rem',
-                          color: '#64748b',
-                          lineHeight: '1.5'
-                        }}>
-                          {event.description}
-                        </p>
-
-                        <div style={{
-                          display: 'flex',
-                          gap: '1rem',
-                          paddingTop: '1rem',
-                          borderTop: '1px solid #f1f5f9',
-                          fontSize: '0.8125rem',
-                          color: '#64748b'
-                        }}>
-                          <div style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}>
-                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{event.rsvpCount}</span>
-                            <span>RSVP{event.rsvpCount !== 1 ? 's' : ''}</span>
-                          </div>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}>
-                            <span>💰</span>
-                            <span style={{ fontWeight: 600 }}>${event.price}</span>
-                            <span>/RSVP</span>
-                          </div>
-                          {event.capacity > 0 && (
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              color: event.rsvpCount >= event.capacity ? '#ef4444' : '#64748b'
-                            }}>
-                              {event.rsvpCount}/{event.capacity}
-                              {event.rsvpCount >= event.capacity && ' • Full'}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Event ID - Copyable */}
-                        <div style={{
-                          marginTop: '0.75rem',
-                          paddingTop: '0.75rem',
-                          borderTop: '1px solid #f1f5f9',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}>
-                          <span style={{
-                            fontSize: '0.75rem',
-                            color: '#94a3b8',
-                            fontFamily: 'monospace'
-                          }}>
-                            Event ID:
-                          </span>
-                          <span
-                            style={{
-                              fontFamily: 'monospace',
-                              fontSize: '0.7rem',
-                              color: '#64748b',
-                              cursor: 'pointer',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '4px',
-                              background: '#f8fafc',
-                              border: '1px solid #e2e8f0',
-                              transition: 'all 0.2s',
-                              maxWidth: '200px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onClick={() => {
-                              navigator.clipboard.writeText(event.id);
-                              // Show brief feedback
-                              const span = document.querySelector(`[data-host-event-id="${event.id}"]`) as HTMLElement;
-                              if (span) {
-                                const originalText = span.textContent;
-                                span.textContent = 'Copied!';
-                                span.style.color = '#10b981';
-                                setTimeout(() => {
-                                  span.textContent = originalText;
-                                  span.style.color = '#64748b';
-                                }, 1000);
-                              }
-                            }}
-                            onMouseOver={(e) => {
-                              e.currentTarget.style.background = '#f1f5f9';
-                              e.currentTarget.style.color = '#475569';
-                            }}
-                            onMouseOut={(e) => {
-                              e.currentTarget.style.background = '#f8fafc';
-                              e.currentTarget.style.color = '#64748b';
-                            }}
-                            data-host-event-id={event.id}
-                            title="Click to copy full event ID"
-                          >
-                            {event.id}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Create Event Card */}
                     <div
@@ -1023,167 +764,10 @@ function MyMcpInner() {
                     </div>
                   </div>
                 )}
+
+              </div>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Dev Tools: Console Logs Panel (Fixed Right Side) */}
-        {!logsCollapsed && (
-          <div style={{
-            position: 'fixed',
-            right: 0,
-            top: '73px', // Below header
-            bottom: 0,
-            width: '400px',
-            background: '#0f172a',
-            borderLeft: '2px solid #1e293b',
-            display: 'flex',
-            flexDirection: 'column',
-            zIndex: 90,
-            boxShadow: '-4px 0 12px rgba(0,0,0,0.1)'
-          }}>
-            {/* Dev Tools Header */}
-            <div style={{
-              padding: '0.75rem 1rem',
-              background: '#1e293b',
-              borderBottom: '1px solid #334155',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.875rem', color: '#94a3b8', fontWeight: 600 }}>
-                  🛠️ DEV CONSOLE
-                </span>
-                <span style={{
-                  fontSize: '0.625rem',
-                  color: '#64748b',
-                  background: '#334155',
-                  padding: '0.125rem 0.375rem',
-                  borderRadius: '4px',
-                  fontFamily: 'monospace'
-                }}>
-                  {logs.length}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  onClick={() => setLogs([])}
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    background: '#334155',
-                    color: '#e2e8f0',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#475569'}
-                  onMouseOut={(e) => e.currentTarget.style.background = '#334155'}
-                >
-                  Clear
-                </button>
-                <button
-                  onClick={() => setLogsCollapsed(true)}
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    background: '#334155',
-                    color: '#e2e8f0',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#475569'}
-                  onMouseOut={(e) => e.currentTarget.style.background = '#334155'}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Logs Content */}
-            <div style={{
-              flex: 1,
-              overflowY: 'auto',
-              fontFamily: 'SF Mono, Consolas, Monaco, monospace',
-              fontSize: '0.75rem'
-            }}>
-              {logs.length === 0 ? (
-                <div style={{
-                  padding: '2rem',
-                  textAlign: 'center',
-                  color: '#64748b',
-                  fontSize: '0.875rem'
-                }}>
-                  Console logs will appear here...
-                </div>
-              ) : (
-                logs.map((l, i) => {
-                  const isError = l.includes('❌');
-                  const isSuccess = l.includes('✅');
-                  const isInfo = l.includes('📧') || l.includes('🔐') || l.includes('🚀') || l.includes('📋');
-
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '0.625rem 1rem',
-                        color: isError ? '#fca5a5' : isSuccess ? '#86efac' : isInfo ? '#93c5fd' : '#cbd5e1',
-                        borderBottom: '1px solid #1e293b',
-                        fontFamily: 'inherit',
-                        lineHeight: '1.5'
-                      }}
-                    >
-                      {l}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Show Console Button (when collapsed) */}
-        {logsCollapsed && (
-          <button
-            onClick={() => setLogsCollapsed(false)}
-            style={{
-              position: 'fixed',
-              right: '1rem',
-              bottom: '1rem',
-              padding: '0.75rem 1.25rem',
-              background: '#0f172a',
-              color: 'white',
-              border: '2px solid #1e293b',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              zIndex: 50,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-            }}
-          >
-            🛠️ Show Dev Console
-          </button>
-        )}
       </div>
 
       {/* Create Event Modal */}
