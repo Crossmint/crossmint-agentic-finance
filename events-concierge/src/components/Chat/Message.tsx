@@ -4,9 +4,10 @@ import type { ChatMessage } from "../../types";
 interface MessageProps {
   message: ChatMessage;
   onAction?: (action: string) => void;
+  onPrefill?: (text: string) => void;
 }
 
-export function Message({ message, onAction }: MessageProps) {
+export function Message({ message, onAction, onPrefill }: MessageProps) {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -28,13 +29,16 @@ export function Message({ message, onAction }: MessageProps) {
             <WalletCard data={message.inlineComponent.data} />
           )}
           {message.inlineComponent.type === 'tools-list' && (
-            <ToolsList data={message.inlineComponent.data} />
+            <ToolsList data={message.inlineComponent.data} onAction={onAction} />
           )}
           {message.inlineComponent.type === 'events-list' && (
-            <EventsList data={message.inlineComponent.data} />
+            <EventsList data={message.inlineComponent.data} onPrefill={onPrefill} />
           )}
           {message.inlineComponent.type === 'rsvp-confirmation' && (
             <RsvpConfirmation data={message.inlineComponent.data} />
+          )}
+          {message.inlineComponent.type === 'tx-link' && (
+            <TxLink data={message.inlineComponent.data} />
           )}
         </div>
       )}
@@ -107,165 +111,200 @@ function WalletCard({ data }: { data: any }) {
 }
 
 // Inline component: Tools List
-function ToolsList({ data }: { data: any }) {
+function ToolsList({ data, onAction }: { data: any; onAction?: (action: string) => void }) {
+  const displayTitleFor = (name: string) => {
+    // if (name === 'createEvent') return 'Create Event';
+    if (name === 'getAllEvents') return 'Get all events';
+    if (name === 'rsvpToEvent') return 'RSVP to event';
+    return name;
+  };
+
+  const clickActionFor = (name: string) => {
+    // if (name === 'createEvent') return 'create event';
+    if (name === 'getAllEvents') return 'list events';
+    if (name === 'rsvpToEvent') return 'rsvp to event';
+    return name;
+  };
+
+  const PricePill = ({ isPaid, price }: { isPaid: boolean; price: number | null }) => {
+    if (!isPaid) {
+      return (
+        <span
+          style={{
+            padding: '0.5rem 0.85rem',
+            background: 'white',
+            border: '1px solid #E2E8F0',
+            borderRadius: '999px',
+            color: '#0F172A',
+            fontWeight: 700,
+            fontSize: '0.9375rem',
+            lineHeight: 1
+          }}
+        >
+          Free
+        </span>
+      );
+    }
+    const amount = typeof price === 'number' ? `$${price.toFixed(2)}` : '$0.00';
+    return (
+      <span
+        style={{
+          padding: '0.5rem 0.85rem',
+          background: 'white',
+          border: '1px solid #1A73E8',
+          borderRadius: '999px',
+          color: '#1A73E8',
+          fontWeight: 700,
+          fontSize: '0.9375rem',
+          lineHeight: 1
+        }}
+      >
+        {amount}
+      </span>
+    );
+  };
+
   return (
-    <div style={{ padding: '1rem' }}>
-      <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-        Available Tools
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {data.tools?.map((tool: any, idx: number) => (
-          <div
-            key={idx}
-            style={{
-              padding: '0.75rem',
-              background: '#f8fafc',
-              borderRadius: '8px',
-              fontSize: '0.8125rem'
-            }}
-          >
-            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {tool.name}
-              {tool.isPaid && (
-                <span style={{
-                  background: '#3b82f6',
-                  color: 'white',
-                  padding: '0.125rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600
-                }}>
-                  ${tool.price}
-                </span>
-              )}
-              {!tool.isPaid && (
-                <span style={{
-                  background: '#22c55e',
-                  color: 'white',
-                  padding: '0.125rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600
-                }}>
-                  free
-                </span>
-              )}
+    <div style={{ padding: '0.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {(Array.isArray(data.tools) ? data.tools.filter((t: any) => t?.name !== 'createEvent') : []).map((tool: any, idx: number) => {
+          const title = displayTitleFor(tool.name);
+          const subtitle = tool.description as string;
+          return (
+            <div
+              key={idx}
+              onClick={() => onAction?.(clickActionFor(tool.name))}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') onAction?.(clickActionFor(tool.name));
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.875rem',
+                padding: '1rem',
+                background: 'white',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                boxShadow: '0 10px 18px rgba(2,6,23,0.08)',
+                cursor: 'pointer'
+              }}
+            >
+              <img src="/calendar.svg" alt="tool" width={40} height={40} style={{ flexShrink: 0 }} />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A' }}>{title}</div>
+                <div style={{ color: '#64748B', fontSize: '1rem' }}>{subtitle}</div>
+              </div>
+
+              <PricePill isPaid={!!tool.isPaid} price={tool.price ?? null} />
             </div>
-            <div style={{ color: '#64748b', marginTop: '0.25rem' }}>
-              {tool.description}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // Inline component: Events List
-function EventsList({ data }: { data: any }) {
+function EventsList({ data, onPrefill }: { data: any; onPrefill?: (text: string) => void }) {
   return (
     <div style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {data.events?.map((event: any, idx: number) => (
-          <div
-            key={idx}
-            style={{
-              padding: '1rem',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '0.8125rem'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#0f172a', marginBottom: '0.25rem' }}>
-                  {event.title}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  📅 {new Date(event.date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </div>
-              </div>
+        {data.events?.map((event: any, idx: number) => {
+          const dateStr = new Date(event.date).toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
+          const isFree = Number(event.price) === 0;
+          const priceText = isFree ? 'Free' : `$${Number(event.price).toFixed(2)}`;
+          const capacityText = event.capacity === 0
+            ? 'Unlimited capacity'
+            : `${Math.max(event.capacity - event.rsvpCount, 0)} spots left`;
+
+          return (
+            <div
+              key={idx}
+              style={{
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '16px',
+                boxShadow: '0 6px 18px rgba(2,6,23,0.06)',
+                cursor: 'pointer'
+              }}
+              onClick={() => onPrefill?.(`rsvp to event ${event.id}`)}
+              title="Click to prefill RSVP command"
+            >
+              {/* Date & time */}
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>{dateStr}</div>
+
+              {/* Title */}
               <div style={{
-                background: '#eff6ff',
-                color: '#3b82f6',
-                padding: '0.375rem 0.75rem',
-                borderRadius: '6px',
-                fontSize: '0.8125rem',
-                fontWeight: 600
+                fontSize: '22px',
+                fontWeight: 800,
+                color: '#0f172a',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}>
-                ${event.price}
+                {event.title}
+              </div>
+
+              {/* Meta row: capacity, RSVPs, price */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '14px' }}>
+                  <img src="/users.svg" width={16} height={16} alt="capacity" />
+                  <span>{capacityText}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '14px' }}>
+                  <img src="/users.svg" width={16} height={16} alt="rsvps" />
+                  <span>{event.rsvpCount} RSVPs</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', marginLeft: 'auto' }}>
+                  <img src="/dollar.svg" width={15} height={15} alt="price" />
+                  <span style={{ color: '#1A73E8' }}>{priceText}</span>
+                </div>
+              </div>
+
+              {/* Optional: copyable ID in tiny footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <span
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => navigator.clipboard.writeText(event.id)}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#e2e8f0';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = '#f8fafc';
+                    e.currentTarget.style.color = '#94a3b8';
+                  }}
+                  title="Click to copy full event ID"
+                >
+                  ID: {event.id}
+                </span>
               </div>
             </div>
-
-            <div style={{ color: '#64748b', fontSize: '0.8125rem', marginBottom: '0.5rem', lineHeight: '1.4' }}>
-              {event.description}
-            </div>
-
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              fontSize: '0.75rem',
-              color: '#64748b',
-              paddingTop: '0.5rem',
-              borderTop: '1px solid #f1f5f9'
-            }}>
-              <span>👥 {event.rsvpCount} RSVPs</span>
-              {event.capacity > 0 && (
-                <span>
-                  {event.capacity - event.rsvpCount} spots left
-                  {event.rsvpCount >= event.capacity && <span style={{ color: '#ef4444' }}> • Full</span>}
-                </span>
-              )}
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  fontFamily: 'monospace',
-                  fontSize: '0.7rem',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
-                  background: '#f1f5f9',
-                  border: '1px solid #e2e8f0',
-                  transition: 'all 0.2s'
-                }}
-                onClick={() => {
-                  navigator.clipboard.writeText(event.id);
-                  // Optional: Show a brief toast notification
-                  const span = document.querySelector(`[data-event-id="${event.id}"]`) as HTMLElement;
-                  if (span) {
-                    const originalText = span.textContent;
-                    span.textContent = 'Copied!';
-                    span.style.color = '#10b981';
-                    setTimeout(() => {
-                      span.textContent = originalText;
-                      span.style.color = '#94a3b8';
-                    }, 1000);
-                  }
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#e2e8f0';
-                  e.currentTarget.style.color = '#64748b';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#f1f5f9';
-                  e.currentTarget.style.color = '#94a3b8';
-                }}
-                data-event-id={event.id}
-                title="Click to copy full event ID"
-              >
-                ID: {event.id}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -302,6 +341,34 @@ function RsvpConfirmation({ data }: { data: any }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Inline component: Transaction Link
+function TxLink({ data }: { data: any }) {
+  const href: string = data?.href;
+  const txHash: string = data?.txHash;
+  return (
+    <div style={{ padding: '1rem' }}>
+      <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+        Transaction
+      </div>
+      <div className="mono" style={{ fontSize: '0.75rem', wordBreak: 'break-all' }}>
+        {txHash}
+      </div>
+      {href && (
+        <div style={{ marginTop: '0.5rem' }}>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#3b82f6', textDecoration: 'none' }}
+          >
+            View on Explorer ↗
+          </a>
+        </div>
+      )}
     </div>
   );
 }

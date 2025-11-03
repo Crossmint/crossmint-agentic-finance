@@ -4,26 +4,26 @@ interface ChatHeaderProps {
   nerdMode: boolean;
   onToggleNerdMode: () => void;
   mcpConnected: boolean;
+  onStatusClick?: () => void;
+  showNerdToggle?: boolean;
 }
 
-export function ChatHeader({ nerdMode, onToggleNerdMode, mcpConnected }: ChatHeaderProps) {
+export function ChatHeader({ nerdMode, onToggleNerdMode, mcpConnected, onStatusClick, showNerdToggle = false }: ChatHeaderProps) {
   return (
     <div className="chat-header">
       <div className="chat-header-top">
-        <h1>Event RSVP MCP</h1>
+        <h1>Events Concierge</h1>
         <div className="chat-header-actions">
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontSize: '0.875rem',
-            color: '#64748b'
-          }}>
-            <span
-              className={`status-dot ${mcpConnected ? 'connected' : 'disconnected'}`}
-            />
+          <button
+            className="status-pill"
+            onClick={onStatusClick}
+            aria-label={mcpConnected ? 'Connected' : 'Disconnected'}
+            type="button"
+          >
+            <span className={`status-dot ${mcpConnected ? 'connected' : 'disconnected'}`} />
             {mcpConnected ? 'Connected' : 'Disconnected'}
-          </div>
+          </button>
+          {showNerdToggle && (
           <label style={{
             display: 'flex',
             alignItems: 'center',
@@ -68,6 +68,7 @@ export function ChatHeader({ nerdMode, onToggleNerdMode, mcpConnected }: ChatHea
               }} />
             </div>
           </label>
+          )}
         </div>
       </div>
       <p className="subtitle">

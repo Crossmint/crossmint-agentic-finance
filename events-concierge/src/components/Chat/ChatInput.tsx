@@ -1,13 +1,21 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   suggestedActions?: string[];
   disabled?: boolean;
+  prefill?: string; // optional external prefill for the input box
 }
 
-export function ChatInput({ onSend, suggestedActions = [], disabled = false }: ChatInputProps) {
+export function ChatInput({ onSend, suggestedActions = [], disabled = false, prefill }: ChatInputProps) {
   const [input, setInput] = useState("");
+
+  // Apply external prefill without sending (user still submits manually)
+  useEffect(() => {
+    if (typeof prefill === 'string' && prefill !== '' && prefill !== input) {
+      setInput(prefill);
+    }
+  }, [prefill]);
 
   const handleSend = () => {
     if (input.trim() && !disabled) {

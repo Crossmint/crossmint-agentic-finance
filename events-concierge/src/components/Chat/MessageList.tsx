@@ -5,9 +5,10 @@ import type { ChatMessage } from "../../types";
 interface MessageListProps {
   messages: ChatMessage[];
   onAction?: (action: string) => void;
+  onPrefill?: (text: string) => void;
 }
 
-export function MessageList({ messages, onAction }: MessageListProps) {
+export function MessageList({ messages, onAction, onPrefill }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -33,6 +34,7 @@ export function MessageList({ messages, onAction }: MessageListProps) {
           key={message.id}
           message={message}
           onAction={onAction}
+          onPrefill={onPrefill}
         />
       ))}
 

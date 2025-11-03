@@ -398,11 +398,28 @@ export class Guest extends Agent<Env> {
               this.broadcastLog('system', `✅ Tool call successful: ${parsed.tool}`);
             }
 
+            // Forward tool result to client UI
             conn.send(JSON.stringify({
               type: result.isError ? "tool_error" : "tool_result",
               tool: parsed.tool,
               result: result.content[0]?.text || JSON.stringify(result)
             }));
+
+            // If x402 settlement metadata is present, forward tx hash to UI
+            try {
+              const paymentMeta = (result as any)?._meta?.["x402/payment-response"]; // { success, transaction, network, payer }
+              console.log("Payment metadata:", paymentMeta);
+              if (paymentMeta?.transaction) {
+                conn.send(JSON.stringify({
+                  type: "payment_receipt",
+                  txHash: paymentMeta.transaction,
+                  network: paymentMeta.network,
+                  payer: paymentMeta.payer
+                }));
+              }
+            } catch (_) {
+              // best-effort; ignore if structure is unexpected
+            }
           } catch (error) {
             this.broadcastLog('error', `❌ Tool call failed: ${error instanceof Error ? error.message : String(error)}`);
             conn.send(JSON.stringify({

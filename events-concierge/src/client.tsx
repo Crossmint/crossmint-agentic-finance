@@ -9,6 +9,9 @@ import { NerdPanel } from "./components/NerdMode/NerdPanel";
 import type { ChatMessage, Log, Tool, PaymentRequirement, WalletInfo, Transaction } from "./types";
 import { detectIntent, getSuggestedActions } from "./utils/intentDetection";
 import { exportChatAsMarkdown, exportLogsAsJSON, exportWalletConfig } from "./utils/exportUtils";
+import { createPublicClient, http, formatEther } from "viem";
+import { baseSepolia } from "viem/chains";
+import { USDC_BASE_SEPOLIA } from "./constants";
 
 interface PaymentPopupProps {
   show: boolean;
@@ -77,7 +80,7 @@ interface ClientAppProps {
 
 export function ClientApp({ apiKey = '' }: ClientAppProps) {
   // UI State
-  const [nerdMode, setNerdMode] = useState(true);
+  const [nerdMode, setNerdMode] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   // MCP URL (not prefilled - user must enter)
@@ -88,11 +91,26 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
+  // Prefill text for the chat input when user clicks an event card
+  const [inputPrefill, setInputPrefill] = useState<string>("");
+
   // Payment State
   const [showPayment, setShowPayment] = useState(false);
   const [paymentReq, setPaymentReq] = useState<PaymentRequirement | null>(null);
   const [confirmationId, setConfirmationId] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
+
+  // Developer visibility flag for Nerd UI
+  const devUnlocked = new URLSearchParams(location.search).has('dev') ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem('debug') === '1');
+
+  // Status pill popover for MCP connect
+  const [showMcpPopover, setShowMcpPopover] = useState(false);
+
+  // Balances state (ETH / USDC)
+  const [balances, setBalances] = useState<{ eth: string; usdc: string } | null>(null);
+  // Copy feedback state
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Connect to the current domain (works for both local dev and production)
   // Always connect to the deployed Workers domain
@@ -139,7 +157,8 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
         from: transaction.from,
         to: transaction.to,
         resource: transaction.resource,
-        status: transaction.status
+        status: transaction.status,
+        txHash: (transaction as any).txHash
       });
     } else if (transaction.type === 'deployment') {
       addLog('transaction', `🚀 Wallet deployed: ${transaction.txHash}`, {
@@ -153,6 +172,45 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
 
   // Wallet is initialized by the agent, not the client
   // Client just receives wallet info from agent via wallet_info message
+
+  // Helper: shorten address
+  const shortAddr = useCallback((a: string) => (a ? `${a.slice(0, 6)}…${a.slice(-6)}` : ''), []);
+
+  // Fetch balances for guest wallet
+  const fetchBalances = useCallback(async (address?: string) => {
+    try {
+      if (!address || !address.startsWith('0x')) return;
+      const client = createPublicClient({
+        chain: baseSepolia,
+        transport: http('https://base-sepolia.g.alchemy.com/v2/m8uZ16oNz2KOgSqu-9Pv6E1fkc69n8Xf')
+      });
+
+      const [ethWei, usdcRaw] = await Promise.all([
+        client.getBalance({ address: address as `0x${string}` }),
+        client.readContract({
+          address: USDC_BASE_SEPOLIA as `0x${string}`,
+          abi: [
+            {
+              name: 'balanceOf',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [{ name: 'owner', type: 'address' }],
+              outputs: [{ type: 'uint256' }]
+            }
+          ] as const,
+          functionName: 'balanceOf',
+          args: [address as `0x${string}`]
+        })
+      ]);
+
+      const eth = Number(formatEther(ethWei)).toFixed(4);
+      const usdc = (Number(usdcRaw as unknown as bigint) / 1_000_000).toFixed(2);
+      setBalances({ eth, usdc });
+    } catch (e) {
+      // Non-blocking; default zeros on failure
+      setBalances({ eth: '0.0000', usdc: '0.00' });
+    }
+  }, []);
 
   // Export handlers
   const handleExportChat = useCallback(() => {
@@ -187,6 +245,15 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
           addMessage({
             sender: 'agent',
             text: 'Agent not available. Please refresh the page.'
+          });
+          return;
+        }
+        // If no MCP URL is set, open the Sync events popover to prompt the user
+        if (!mcpUrl) {
+          setShowMcpPopover(true);
+          addMessage({
+            sender: 'agent',
+            text: 'Paste your MCP URL in the Sync events panel (top-right) to connect.'
           });
           return;
         }
@@ -298,7 +365,30 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
           text: `I'm not sure I understand. Try saying "help" to see what I can do!`
         });
     }
-  }, [agent, mcpConnected, walletInfo, addMessage, addLog, walletState]);
+  }, [agent, mcpConnected, walletInfo, addMessage, addLog, walletState, mcpUrl, setShowMcpPopover]);
+
+  // Handle action button clicks in the message list without adding chat bubbles
+  const handleAction = useCallback((action: string) => {
+    const intent = detectIntent(action);
+
+    switch (intent.type) {
+      case 'connect': {
+        if (!agent) return;
+        if (!mcpUrl) {
+          // Open Sync events popover silently
+          setShowMcpPopover(true);
+          return;
+        }
+        // Connect silently (no chat bubbles)
+        agent.send(JSON.stringify({ type: "connect_mcp", url: mcpUrl }));
+        return;
+      }
+      default:
+        // For other actions, fall back to regular handler (includes chat bubbles)
+        handleSendMessage(action);
+        return;
+    }
+  }, [agent, mcpUrl, setShowMcpPopover, handleSendMessage]);
 
   // MCP handlers
   const handleConnectMCP = useCallback(() => {
@@ -385,6 +475,9 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
               guestWalletDeployed: data.guestWalletDeployed || false
             });
 
+            // Load balances on first wallet info
+            fetchBalances(data.guestAddress);
+
             // Add welcome message on first wallet info
             if (messages.length === 0) {
               addMessage({
@@ -468,7 +561,7 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
               else if (resultData.success && resultData.eventTitle) {
                 addMessage({
                   sender: 'agent',
-                  text: `✅ ${resultData.message}`,
+                  text: `${resultData.message}`,
                   inlineComponent: {
                     type: 'rsvp-confirmation',
                     data: {
@@ -508,7 +601,46 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
             // Payment completed successfully
             setPaymentLoading(false);
             setShowPayment(false);
+
+            // Refresh balances after a successful tool/payment
+            if (walletInfo?.guestAddress) {
+              fetchBalances(walletInfo.guestAddress);
+            }
             break;
+
+          case "payment_receipt": {
+            const txHash: string | undefined = data.txHash;
+            const network: string | undefined = data.network;
+
+            if (txHash) {
+              // Show a chat bubble with a link to the explorer
+              addMessage({
+                sender: 'agent',
+                text: 'Payment settled on-chain.',
+                inlineComponent: {
+                  type: 'tx-link',
+                  data: {
+                    href: `https://sepolia.basescan.org/tx/${txHash}`,
+                    txHash
+                  }
+                }
+              });
+
+              // Record transaction with tx hash
+              if (paymentReq) {
+                addTransaction({
+                  type: 'payment',
+                  amount: `$${(Number(paymentReq.maxAmountRequired) / 1_000_000).toFixed(2)}`,
+                  from: walletInfo?.guestAddress,
+                  to: walletInfo?.hostAddress,
+                  resource: paymentReq.resource,
+                  status: 'success',
+                  txHash
+                } as any);
+              }
+            }
+            break;
+          }
 
           case "tool_error":
             // Parse and format errors
@@ -563,6 +695,36 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
     };
   }, [agent, addMessage, addLog, addTransaction, messages.length, paymentReq, walletInfo]);
 
+  // Note: previously we auto-closed the popover on connect; removed to allow
+  // the account dropdown to be toggled while connected.
+
+  // When dropdown opens, refresh balances
+  useEffect(() => {
+    if (showMcpPopover && walletInfo?.guestAddress) {
+      fetchBalances(walletInfo.guestAddress);
+    }
+  }, [showMcpPopover, walletInfo?.guestAddress, fetchBalances]);
+
+  // Close on Escape / outside click
+  useEffect(() => {
+    if (!showMcpPopover) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMcpPopover(false);
+    };
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.mcp-popover') && !target.closest('.status-pill')) {
+        setShowMcpPopover(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [showMcpPopover]);
+
   const suggestedActions = getSuggestedActions(mcpConnected, false);
 
   return (
@@ -582,19 +744,84 @@ export function ClientApp({ apiKey = '' }: ClientAppProps) {
           nerdMode={nerdMode}
           onToggleNerdMode={() => setNerdMode(!nerdMode)}
           mcpConnected={mcpConnected}
+          onStatusClick={() => setShowMcpPopover((v) => !v)}
+          showNerdToggle={devUnlocked}
         />
+        {showMcpPopover && (
+          mcpConnected && walletInfo ? (
+            <div className="mcp-popover" role="dialog" aria-modal="true">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ fontWeight: 700, fontSize: '16px' }}>Account</div>
+              </div>
+
+              <div className="account-balance-grid">
+                <div className="account-balance-tile">
+                  <div className="muted">Balance</div>
+                  <div className="amount">{balances?.usdc ?? '0.00'} USDC</div>
+                </div>
+                <div className="account-balance-tile">
+                  <div className="muted">Balance</div>
+                  <div className="amount">{balances?.eth ?? '0.0000'} ETH</div>
+                </div>
+              </div>
+
+              <div
+                className="account-row"
+                title={walletInfo.guestAddress}
+              >
+                <span className="mono">{shortAddr(walletInfo.guestAddress)}</span>
+                <button
+                  className={`copy-btn${copiedAddress ? ' copied' : ''}`}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(walletInfo.guestAddress);
+                      setCopiedAddress(true);
+                      setTimeout(() => setCopiedAddress(false), 1200);
+                    } catch {}
+                  }}
+                  aria-live="polite"
+                  aria-label="Copy wallet address"
+                  disabled={copiedAddress}
+                >
+                  {copiedAddress ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+
+              <button className="account-disconnect" onClick={handleDisconnectMCP}>Disconnect</button>
+
+              <div className="account-footer">
+                <span>Powered by <img src="/crossmint.png" alt="Crossmint" /></span>
+              </div>
+            </div>
+          ) : (
+            <div className="mcp-popover" role="dialog" aria-modal="true">
+              <h3>Sync events</h3>
+              <div className="mcp-input-row">
+                <input
+                  value={mcpUrl}
+                  onChange={(e) => setMcpUrl(e.target.value)}
+                  placeholder="Enter your Events URL"
+                />
+                <button onClick={handleConnectMCP}>Connect</button>
+              </div>
+              <div className="mcp-help">Get your personal MCP URL from My MCP page</div>
+            </div>
+          )
+        )}
         <MessageList
           messages={messages}
-          onAction={handleSendMessage}
+          onAction={handleAction}
+          onPrefill={(text) => setInputPrefill(text)}
         />
         <ChatInput
           onSend={handleSendMessage}
           suggestedActions={suggestedActions}
+          prefill={inputPrefill}
         />
       </div>
 
       {/* Right: Nerd Mode Panel */}
-      {nerdMode && (
+      {devUnlocked && nerdMode && (
         <NerdPanel
           walletInfo={walletInfo}
           mcpConnected={mcpConnected}
