@@ -10,20 +10,6 @@ export const FACILITATOR_URL = "https://x402.org/facilitator";
 
 // Network configuration
 export const NETWORK = "base-sepolia";
-export const CHAIN_ID = 84532;
 
 // Wallet locators for consistent agent identities
-export const HOST_WALLET_LOCATOR = "userId:event-host-agent:evm:smart";
 export const GUEST_WALLET_LOCATOR = "userId:event-guest-agent:evm:smart";
-
-// Helper to convert USD string to atomic units (USDC has 6 decimals)
-export function usdToAtomicUnits(usdAmount: string): string {
-  const amount = parseFloat(usdAmount);
-  return Math.floor(amount * 1_000_000).toString();
-}
-
-// Helper to convert atomic units back to USD
-export function atomicUnitsToUsd(atomicUnits: string): string {
-  const amount = parseInt(atomicUnits);
-  return (amount / 1_000_000).toFixed(6);
-}

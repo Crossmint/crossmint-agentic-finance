@@ -1,13 +1,13 @@
 import { routeAgentRequest, getAgentByName } from "agents";
 import { Host } from "./agents/host";
 import { Guest } from "./agents/guest";
+import { hashUserId } from "./utils/hashing";
+import { createEventService } from "./shared/eventService";
+import { buildCorsHeaders, preflightResponse } from "./utils/cors";
 
 export type Env = {
   OPENAI_API_KEY: string;
   CROSSMINT_API_KEY: string; // Client API key (ck_) for email OTP
-  CROSSMINT_SERVER_KEY?: string; // Server API key (sk_) for Host wallet
-  GUEST_PRIVATE_KEY: string;
-  HOST_WALLET_ADDRESS: string;
   SECRETS: KVNamespace;
   ASSETS?: Fetcher; // Optional - only used in wrangler dev, not vite dev
   Host: DurableObjectNamespace;
@@ -21,23 +21,11 @@ export default {
     const url = new URL(request.url);
 
     // Basic CORS headers for API endpoints
-    const requestAllowHeaders = request.headers.get("access-control-request-headers");
-    const allowHeaders = requestAllowHeaders
-      ? `${requestAllowHeaders}, Content-Type, content-type, Authorization, authorization, X-Requested-With`
-      : "Content-Type, content-type, Authorization, authorization, X-Requested-With";
-    const originHeader = request.headers.get("Origin") || "*";
-    const CORS_HEADERS: Record<string, string> = {
-      "Access-Control-Allow-Origin": originHeader,
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      // Include requested headers plus a safe baseline
-      "Access-Control-Allow-Headers": allowHeaders,
-      "Access-Control-Max-Age": "86400",
-      "Vary": "Origin, Access-Control-Request-Headers"
-    };
+    const CORS_HEADERS = buildCorsHeaders(request);
 
     // Handle global preflight
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: CORS_HEADERS });
+      return preflightResponse(request);
     }
 
     // Serve assets for root and static files first (only in wrangler dev with ASSETS binding)
@@ -119,18 +107,7 @@ export default {
 
         // Handle CORS preflight for MCP endpoints
         if (request.method === "OPTIONS") {
-          const origin = request.headers.get("Origin") || "*";
-          const requestedHeaders = request.headers.get("Access-Control-Request-Headers") || "Content-Type, Authorization, X-Requested-With, x-user-scope-id";
-          return new Response(null, {
-            status: 204,
-            headers: {
-              "Access-Control-Allow-Origin": origin,
-              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-              "Access-Control-Allow-Headers": requestedHeaders,
-              "Access-Control-Max-Age": "86400",
-              "Vary": "Origin, Access-Control-Request-Headers"
-            }
-          });
+          return preflightResponse(request, ["x-user-scope-id"]);
         }
 
         // Look up user by urlSafeId (hash)
@@ -165,9 +142,12 @@ export default {
 
         // Add CORS headers to MCP response
         const corsHeaders = new Headers(response.headers);
-        corsHeaders.set("Access-Control-Allow-Origin", "*");
-        corsHeaders.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        corsHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, x-user-scope-id");
+        const hdrs = buildCorsHeaders(request, ["x-user-scope-id"]);
+        corsHeaders.set("Access-Control-Allow-Origin", hdrs["Access-Control-Allow-Origin"]);
+        corsHeaders.set("Access-Control-Allow-Methods", hdrs["Access-Control-Allow-Methods"]);
+        corsHeaders.set("Access-Control-Allow-Headers", hdrs["Access-Control-Allow-Headers"]);
+        corsHeaders.set("Access-Control-Max-Age", hdrs["Access-Control-Max-Age"]);
+        corsHeaders.set("Vary", hdrs["Vary"]);
 
         return new Response(response.body, {
           status: response.status,
@@ -186,26 +166,7 @@ export default {
       }
     }
 
-    // =========================================================
-    // SSE MCP endpoints (direct to DO, not gateway)
-    // =========================================================
-    // Note: SSE gateway with DO-to-DO WS has known issues
-    // Use streamable-http for per-user; SSE only for shared endpoint
-    if (url.pathname === "/mcp/sse") {
-      // Shared SSE endpoint only
-      try {
-        return await Host.serve("/mcp", { binding: "Host", transport: "sse" }).fetch(request, env, ctx);
-      } catch (error) {
-        console.error("SSE shared MCP error:", error);
-        return new Response(
-          JSON.stringify({
-            error: "SSE MCP error",
-            message: error instanceof Error ? error.message : String(error)
-          }),
-          { status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } }
-        );
-      }
-    }
+    // SSE endpoint removed for simplicity; streamable-http is used for per-user MCP
 
     // API to register user's MCP mapping (authenticated via Crossmint wallet)
     if (url.pathname === "/api/users/mcp" && request.method === "POST") {
@@ -229,12 +190,7 @@ export default {
 
         // Create URL-safe identifier from userId
         // Hash the userId to avoid special characters in URL paths
-        const encoder = new TextEncoder();
-        const data = encoder.encode(userId);
-        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        const urlSafeId = hashHex.substring(0, 16); // Use first 16 chars for shorter URLs
+        const urlSafeId = await hashUserId(userId);
 
         // Check if user already exists (check both original userId and urlSafeId)
         let existingUser = await env.SECRETS.get(`users:${userId}`, { type: "json" }) as { walletAddress?: string, urlSafeId?: string, userId?: string } | null;
@@ -375,34 +331,24 @@ export default {
         }
 
         // Create URL-safe identifier for routing to the correct DO
-        const encoder = new TextEncoder();
-        const data = encoder.encode(userId);
-        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        const urlSafeId = hashHex.substring(0, 16);
+        const urlSafeId = await hashUserId(userId);
 
         // Store event directly using the urlSafeId as the key prefix (same as Host DO does)
         const eventId = crypto.randomUUID();
-        const stored = {
-          id: eventId,
+        const eventService = createEventService({ kv: env.SECRETS });
+        const stored = await eventService.createEvent({
+          userScopeId: urlSafeId,
           title,
           description,
           date,
           capacity,
-          price,
-          createdAt: Date.now(),
-          rsvpCount: 0
-        };
+          price
+        });
 
-        // Scope event to the user's DO instance using urlSafeId (matches Host.name)
-        const eventKey = `${urlSafeId}:events:${eventId}`;
-        await env.SECRETS.put(eventKey, JSON.stringify(stored));
-
-        console.log(`🎉 Event created for user ${userId}: ${title} (${eventId})`);
+        console.log(`🎉 Event created for user ${userId}: ${title} (${stored.id})`);
         return new Response(JSON.stringify({
           success: true,
-          eventId,
+          eventId: stored.id,
           title,
           message: "Event created successfully"
         }), { headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
@@ -449,41 +395,20 @@ export default {
         }
 
         // Get urlSafeId
-        const encoder = new TextEncoder();
-        const data = encoder.encode(userId);
-        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        const urlSafeId = hashHex.substring(0, 16);
+        const urlSafeId = await hashUserId(userId);
 
         // List all events for this user
-        const prefix = `${urlSafeId}:events:`;
-        const keys = await env.SECRETS.list({ prefix });
-        const events = await Promise.all(
-          keys.keys.map(async (k) => {
-            const eventData = await env.SECRETS.get(k.name);
-            if (!eventData) return null;
-            const event = JSON.parse(eventData);
-            return {
-              id: event.id,
-              title: event.title,
-              description: event.description,
-              date: new Date(event.date).toISOString(),
-              capacity: event.capacity,
-              price: event.price,
-              rsvpCount: event.rsvpCount,
-              createdAt: new Date(event.createdAt).toISOString(),
-              revenue: (parseFloat(event.price) * event.rsvpCount).toFixed(2)
-            };
-          })
-        );
-
-        const filteredEvents = events.filter(Boolean);
-        const totalRevenue = filteredEvents.reduce((sum, e: any) => sum + parseFloat(e.revenue), 0).toFixed(2);
+        const eventService = createEventService({ kv: env.SECRETS });
+        const events = await eventService.listEvents({ userScopeId: urlSafeId });
+        const eventsWithRevenue = events.map(e => ({
+          ...e,
+          revenue: (parseFloat(e.price) * e.rsvpCount).toFixed(2)
+        }));
+        const totalRevenue = eventsWithRevenue.reduce((sum, e: any) => sum + parseFloat(e.revenue), 0).toFixed(2);
 
         return new Response(JSON.stringify({
           success: true,
-          events: filteredEvents,
+          events: eventsWithRevenue,
           totalRevenue
         }), { headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 

@@ -5,6 +5,7 @@ import { NETWORK, GUEST_WALLET_LOCATOR } from "../constants";
 import type { PaymentRequirements } from "x402/types";
 import { CrossmintWallets, createCrossmint, type Wallet } from "@crossmint/wallets-sdk";
 import { createX402Signer, checkWalletDeployment, deployWallet } from "../x402Adapter";
+import { buildWalletInfo } from "./guest/utils";
 
 /**
  * Guest Agent - Connects to Host MCP server and can pay for tools via x402
@@ -54,18 +55,8 @@ export class Guest extends Agent<Env> {
         this.hostWalletAddress = hostAddress;
         this.broadcastLog('info', `💼 Host wallet address discovered: ${hostAddress}`);
 
-        // Check deployment status and send updated wallet info to UI
-        const isDeployed = await checkWalletDeployment(this.wallet.address, "base-sepolia");
-
-        this.broadcast(
-          JSON.stringify({
-            type: "wallet_info",
-            guestAddress: this.wallet.address,
-            hostAddress: this.hostWalletAddress,
-            network: NETWORK,
-            guestWalletDeployed: isDeployed
-          })
-        );
+        const payload = await buildWalletInfo(this.wallet.address, this.hostWalletAddress);
+        this.broadcast(JSON.stringify(payload));
       }
     }
 
@@ -134,16 +125,8 @@ export class Guest extends Agent<Env> {
       return;
     }
 
-    // Check initial deployment status
-    const isDeployed = await checkWalletDeployment(this.wallet.address, "base-sepolia");
-
-    conn.send(JSON.stringify({
-      type: "wallet_info",
-      guestAddress: this.wallet.address,
-      hostAddress: this.hostWalletAddress || "Will be retrieved from Host agent",
-      network: NETWORK,
-      guestWalletDeployed: isDeployed
-    }));
+    const payload = await buildWalletInfo(this.wallet.address, this.hostWalletAddress);
+    conn.send(JSON.stringify(payload));
   }
 
   async onMessage(conn: Connection, message: WSMessage) {
@@ -159,38 +142,6 @@ export class Guest extends Agent<Env> {
       console.log("📦 Parsed message type:", parsed.type);
 
       switch (parsed.type) {
-        case "set_wallet": {
-          // Receive wallet ADDRESS from client (not the full wallet object)
-          console.log("💰 Receiving wallet address from client...");
-
-          if (!parsed.walletAddress) {
-            conn.send(JSON.stringify({
-              type: "error",
-              message: "No wallet address provided"
-            }));
-            return;
-          }
-
-          // Create a minimal wallet object with just the address for x402
-          // The actual signing will be handled by client-side wallet
-          this.wallet = {
-            address: parsed.walletAddress,
-            // Add other minimal properties needed
-          } as any;
-
-          console.log(`✅ Guest wallet address registered: ${this.wallet.address}`);
-
-          // Send wallet info back to client
-          const isDeployed = await checkWalletDeployment(this.wallet.address, "base-sepolia");
-          conn.send(JSON.stringify({
-            type: "wallet_info",
-            guestAddress: this.wallet.address,
-            hostAddress: this.hostWalletAddress || "Will be retrieved from Host agent",
-            network: NETWORK,
-            guestWalletDeployed: isDeployed
-          }));
-          break;
-        }
 
         case "disconnect_mcp": {
           // Disconnect from current MCP
@@ -202,14 +153,8 @@ export class Guest extends Agent<Env> {
           this.mcpUrl = undefined;
 
           // Broadcast updated wallet info
-          const isDeployed = await checkWalletDeployment(this.wallet.address, "base-sepolia");
-          this.broadcast(JSON.stringify({
-            type: "wallet_info",
-            guestAddress: this.wallet.address,
-            hostAddress: "Not connected to MCP",
-            network: NETWORK,
-            guestWalletDeployed: isDeployed
-          }));
+          const payload = await buildWalletInfo(this.wallet.address, undefined);
+          this.broadcast(JSON.stringify({ ...payload, hostAddress: "Not connected to MCP" }));
 
           conn.send(JSON.stringify({
             type: "mcp_disconnected",

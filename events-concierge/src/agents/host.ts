@@ -76,7 +76,7 @@ export class Host extends McpAgent<Env, never, { urlSafeId?: string }> {
     console.log(`🔨 Rebuilding MCP server with new recipient...`);
 
     // Create a new base MCP server
-    const baseServer = new McpServer({ name: "Secret Vault MCP", version: "1.0.0" });
+    const baseServer = new McpServer({ name: "Event RSVP MCP", version: "1.0.0" });
 
     // Wrap with x402 using updated config
     this.server = withX402(baseServer, this.x402Config);
@@ -274,7 +274,7 @@ export class Host extends McpAgent<Env, never, { urlSafeId?: string }> {
     // Initialize MCP server with x402 payment support
     this.server = withX402(
       new McpServer({
-        name: "Secret Vault MCP",
+        name: "Event RSVP MCP",
         version: "1.0.0"
       }),
       this.x402Config
@@ -303,54 +303,7 @@ export class Host extends McpAgent<Env, never, { urlSafeId?: string }> {
       await this.ctx.storage.put("userScopeId", scopeId);
     }
 
-    // Internal endpoint for authenticated event creation
-    if (url.pathname === "/store-event" && request.method === "POST") {
-      try {
-        const body = await request.json() as {
-          title: string,
-          description: string,
-          date: number,
-          capacity: number,
-          price: string
-        };
-        const { title, description, date, capacity, price } = body;
-
-        if (!title || !description || !date || capacity === undefined || !price) {
-          return Response.json(
-            { error: "Missing required fields: title, description, date, capacity, price" },
-            { status: 400 }
-          );
-        }
-
-        // Store event using the shared service
-        const stored = await createEventService({ kv: this.env.SECRETS }).createEvent({
-          userScopeId: this.userScopeId,
-          title,
-          description,
-          date,
-          capacity,
-          price
-        });
-
-        console.log(`🎉 Event created via API by ${this.userScopeId}: ${title} (${stored.id})`);
-
-        return Response.json({
-          success: true,
-          eventId: stored.id,
-          title,
-          message: "Event created successfully"
-        });
-
-      } catch (error) {
-        console.error("Error creating event:", error);
-        return Response.json(
-          { error: "Failed to create event", message: error instanceof Error ? error.message : String(error) },
-          { status: 500 }
-        );
-      }
-    }
-
-    // For all other requests (including WebSocket upgrades for MCP), delegate to parent Agent
+    // For all requests (including WebSocket upgrades for MCP), delegate to parent Agent
     return super.fetch(request);
   }
 }
