@@ -1,4 +1,4 @@
-# basic-402
+# ping
 
 Minimal Express TypeScript server with x402 402 paywall.
 
