@@ -31,9 +31,7 @@ export function useX402Payments({ serverUrl, onLog }: UseX402PaymentsProps) {
       // Make initial request to get payment requirements (should return 402)
       const axiosInstance = axios.create({ baseURL: serverUrl });
 
-      const response = await axiosInstance.get('/ping', {
-        headers: { 'Accept': 'application/vnd.x402+json' }
-      });
+      const response = await axiosInstance.get('/ping');
 
       // If we get here, no payment required
       onLog("✅ No payment required!", 'success');
@@ -98,15 +96,14 @@ export function useX402Payments({ serverUrl, onLog }: UseX402PaymentsProps) {
       onLog(`📍 Paying from wallet: ${wallet.address}`);
 
       // Make the payment request - interceptor will handle the payment
-      const response = await axiosInstance.get('/ping', {
-        headers: { 'Accept': 'application/vnd.x402+json' }
-      });
+      const response = await axiosInstance.get('/ping');
 
       onLog("✅ Payment executed successfully!", 'success');
       onLog(`📨 Server response: ${JSON.stringify(response.data)}`, 'success');
       onLog("🎉 X402 + Crossmint payment complete!", 'success');
 
     } catch (error: any) {
+      console.log(error);
       if (error.response?.status === 402) {
         const errorData = error.response.data;
         onLog("🔧 Payment verification completed, settlement phase had issues", 'warning');

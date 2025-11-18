@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { paymentMiddleware } from "x402-express";
+import { facilitator } from "@coinbase/x402";
 import { exact } from "x402/schemes";
 import * as dotenv from "dotenv";
 
@@ -69,10 +70,7 @@ app.use((req, res, next) => {
 
 app.use(paymentMiddleware(payTo as any, {
   "GET /ping": { price: "$0.001", network }
-}, {
-  url: "https://x402.org/facilitator", // Use default facilitator
-  createAuthHeaders: undefined
-}));
+}, facilitator));
 
 app.get("/", (_req, res) => {
   res.json({ ok: true });
