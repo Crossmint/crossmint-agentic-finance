@@ -39,7 +39,7 @@ const run = async () => {
   app.get(
     "/protected",
     await createMiddleware({
-      facilitatorURL: "http://localhost:4000",
+      facilitatorURL: process.env.FACILITATOR_URL || "http://localhost:4000",
       accepts: [
         // USDC xSolanaSettlement Payment
         xSolanaSettlement({
