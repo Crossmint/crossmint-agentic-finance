@@ -98,5 +98,3 @@ app.get("/ping", (_req, res) => {
 app.listen(port, () => {
   console.log(`ping-crossmint server listening on http://localhost:${port}`);
 });
-
-

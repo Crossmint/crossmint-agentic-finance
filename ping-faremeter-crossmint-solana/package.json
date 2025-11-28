@@ -1,0 +1,31 @@
+{
+  "name": "test-faremeter-crossmint-solana",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc --project tsconfig.json",
+    "start:server": "node dist/server.js",
+    "start:test": "node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@faremeter/fetch": "^0.14.0",
+    "@faremeter/info": "^0.14.0",
+    "@faremeter/middleware": "^0.14.0",
+    "@faremeter/payment-solana": "^0.14.0",
+    "@faremeter/wallet-crossmint": "^0.14.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  }
+}
