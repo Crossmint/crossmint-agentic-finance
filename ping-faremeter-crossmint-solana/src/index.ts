@@ -8,6 +8,8 @@ import { wrap as wrapFetch } from "@faremeter/fetch";
 
 const crossmintWallet = process.env.CROSSMINT_WALLET;
 const crossmintApi = process.env.CROSSMINT_API_KEY;
+const rpcUrl = process.env.RPC_URL;
+
 if (!crossmintWallet || !crossmintApi) {
   throw new Error("CROSSMINT_WALLET, and CROSSMINT_API_KEY must be set in your environment");
 }
@@ -21,7 +23,7 @@ if (!usdcInfo) {
   throw new Error(`couldn't look up SPLToken ${splTokenName} on ${network}!`);
 }
 
-const connection = new Connection("https://solana-devnet.g.alchemy.com/v2/XHN1J_BOs01xvwWJjTgUn");
+const connection = new Connection(rpcUrl);
 
 const mint = new PublicKey(usdcInfo.address);
 const wallet = await createCrossmintWallet(
