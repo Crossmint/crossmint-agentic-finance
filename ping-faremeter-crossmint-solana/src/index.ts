@@ -10,8 +10,8 @@ const crossmintWallet = process.env.CROSSMINT_WALLET;
 const crossmintApi = process.env.CROSSMINT_API_KEY;
 const rpcUrl = process.env.RPC_URL;
 
-if (!crossmintWallet || !crossmintApi) {
-  throw new Error("CROSSMINT_WALLET, and CROSSMINT_API_KEY must be set in your environment");
+if (!crossmintWallet || !crossmintApi || !rpcUrl) {
+  throw new Error("CROSSMINT_WALLET, CROSSMINT_API_KEY, and RPC_URL must be set in your environment");
 }
 
 const network = "devnet";
