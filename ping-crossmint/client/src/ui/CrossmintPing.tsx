@@ -251,7 +251,7 @@ export function CrossmintPing({ apiKey, setApiKey, configContext }: CrossmintPin
                         onUpdateSignerType={updateSignerType}
                         apiKey={apiKey}
                         onUpdateApiKey={setApiKey}
-                        isMinimal={false}
+                        isMinimal={true}
                         otpRequired={walletState.otpRequired}
                         otpSent={walletState.otpSent}
                         currentOtp={currentOtp}
@@ -259,6 +259,7 @@ export function CrossmintPing({ apiKey, setApiKey, configContext }: CrossmintPin
                         onSendOtp={sendOtp}
                         onSubmitOtp={() => submitOtp(currentOtp)}
                         onRejectOtp={rejectOtp}
+                        loggedInUserEmail={user?.email}
                     />
 
                     {/* Server Status */}
