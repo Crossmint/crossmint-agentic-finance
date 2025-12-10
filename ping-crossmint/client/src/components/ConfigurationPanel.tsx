@@ -19,6 +19,8 @@ interface ConfigurationPanelProps {
     onSendOtp?: () => void;
     onSubmitOtp?: () => void;
     onRejectOtp?: () => void;
+    // Logged-in user email (for email-otp signer type)
+    loggedInUserEmail?: string;
 }
 
 export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
@@ -36,13 +38,18 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
     onOtpChange,
     onSendOtp,
     onSubmitOtp,
-    onRejectOtp
+    onRejectOtp,
+    loggedInUserEmail
 }) => {
+    // Determine the effective email based on signer type
+    const effectiveEmail = config.signerType === 'email-otp' && loggedInUserEmail
+        ? loggedInUserEmail
+        : config.testEmail;
     if (isMinimal) {
         return (
             <div style={{
                 maxWidth: 720,
-                margin: '2rem auto',
+                // margin: '2rem auto',
                 fontFamily: 'Inter, system-ui, sans-serif',
                 padding: '0 1rem'
             }}>
@@ -139,16 +146,61 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
                         </div>
                     )}
 
-                    {config.signerType === 'api-key' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: config.signerType === 'email-otp' ? '1fr 1fr' : '1fr 1fr 1fr', gap: '12px' }}>
+                        {config.signerType === 'api-key' && (
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>
+                                    📧 Test Email:
+                                </label>
+                                <input
+                                    type="email"
+                                    placeholder="user@example.com"
+                                    value={config.testEmail}
+                                    onChange={e => onUpdateEmail(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        fontSize: '14px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px'
+                                    }}
+                                />
+                                <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+                                    Owner identifier for the wallet
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>
-                                📧 Test Email:
+                                ⛓️ Chain:
+                            </label>
+                            <select
+                                value={config.chain}
+                                onChange={e => onUpdateChain(e.target.value as SupportedChain)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    fontSize: '14px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '4px'
+                                }}
+                            >
+                                {SUPPORTED_CHAINS.map(chain => (
+                                    <option key={chain} value={chain}>{chain}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>
+                                🌐 Server URL:
                             </label>
                             <input
-                                type="email"
-                                placeholder="user@example.com"
-                                value={config.testEmail}
-                                onChange={e => onUpdateEmail(e.target.value)}
+                                type="url"
+                                placeholder="https://ping-crossmint-server.vercel.app/"
+                                value={config.serverUrl}
+                                onChange={e => onUpdateServerUrl(e.target.value)}
                                 style={{
                                     width: '100%',
                                     padding: '8px',
@@ -157,50 +209,7 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
                                     borderRadius: '4px'
                                 }}
                             />
-                            <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                                Owner identifier for the wallet
-                            </div>
                         </div>
-                    )}
-
-                    <div>
-                        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>
-                            ⛓️ Chain:
-                        </label>
-                        <select
-                            value={config.chain}
-                            onChange={e => onUpdateChain(e.target.value as SupportedChain)}
-                            style={{
-                                width: '100%',
-                                padding: '8px',
-                                fontSize: '14px',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px'
-                            }}
-                        >
-                            {SUPPORTED_CHAINS.map(chain => (
-                                <option key={chain} value={chain}>{chain}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px' }}>
-                            🌐 Server URL:
-                        </label>
-                        <input
-                            type="url"
-                            placeholder="https://ping-crossmint-server.vercel.app/"
-                            value={config.serverUrl}
-                            onChange={e => onUpdateServerUrl(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '8px',
-                                fontSize: '14px',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px'
-                            }}
-                        />
                     </div>
                 </div>
 
@@ -221,7 +230,7 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
                         {!otpSent ? (
                             <div>
                                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '14px' }}>
-                                    Click below to send a verification code to <strong>{config.testEmail}</strong>
+                                    Click below to send a verification code to <strong>{effectiveEmail}</strong>
                                 </p>
                                 <button
                                     onClick={onSendOtp}
@@ -235,24 +244,24 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
                                         fontSize: '14px'
                                     }}
                                 >
-                                    Send OTP to {config.testEmail}
+                                    Send OTP to {effectiveEmail}
                                 </button>
                             </div>
                         ) : (
                             <div>
                                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '14px' }}>
-                                    ✅ OTP sent to <strong>{config.testEmail}</strong>
+                                    ✅ OTP sent to <strong>{effectiveEmail}</strong>
                                 </p>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     <input
                                         type="text"
-                                        placeholder="Enter 6-digit OTP"
-                                        maxLength={6}
+                                        placeholder="Enter 9-digit OTP"
+                                        maxLength={9}
                                         value={currentOtp}
                                         onChange={e => onOtpChange?.(e.target.value)}
                                         style={{
                                             padding: '8px',
-                                            width: '120px',
+                                            width: '140px',
                                             fontSize: '14px',
                                             border: '1px solid #ddd',
                                             borderRadius: '4px',
@@ -261,14 +270,14 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
                                     />
                                     <button
                                         onClick={onSubmitOtp}
-                                        disabled={currentOtp.length !== 6}
+                                        disabled={currentOtp.length !== 9}
                                         style={{
                                             padding: '8px 16px',
-                                            backgroundColor: currentOtp.length === 6 ? '#28a745' : '#ccc',
+                                            backgroundColor: currentOtp.length === 9 ? '#28a745' : '#ccc',
                                             color: 'white',
                                             border: 'none',
                                             borderRadius: '4px',
-                                            cursor: currentOtp.length === 6 ? 'pointer' : 'not-allowed',
+                                            cursor: currentOtp.length === 9 ? 'pointer' : 'not-allowed',
                                             fontSize: '14px'
                                         }}
                                     >
