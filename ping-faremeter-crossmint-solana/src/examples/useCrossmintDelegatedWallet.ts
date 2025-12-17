@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { createCrossmintDelegatedWallet } from "../wallets/crossmintExternalDelegatedWallet.js";
-import { lookupKnownSPLToken } from "@faremeter/info/solana";
+import { lookupKnownSPLToken, type KnownCluster } from "@faremeter/info/solana";
 import { createPaymentHandler } from "@faremeter/payment-solana/exact";
 import { wrap as wrapFetch } from "@faremeter/fetch";
 import { logResponse } from "../logger.js";
@@ -41,7 +41,7 @@ const wallet = await createCrossmintDelegatedWallet({
 console.log(`\nWallet public key: ${wallet.publicKey.toBase58()}`);
 
 // Setup Solana connection and token info
-const network = environment === "production" ? "mainnet-beta" : "devnet";
+const network = (process.env.NETWORK || (environment === "production" ? "mainnet-beta" : "devnet")) as KnownCluster;
 const splTokenName = "USDC";
 
 const usdcInfo = lookupKnownSPLToken(network, splTokenName);
