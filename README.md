@@ -53,6 +53,7 @@ Minimal servers requiring USDC payment to access endpoints.
 | [ping](./ping/) | Base Sepolia | Express server, `/ping` endpoint requires payment | Beginner |
 | [weather](./weather/) | Base Sepolia | Express server, `/weather?city=X` endpoint requires payment | Beginner |
 | [ping-crossmint](./ping-crossmint/) | Base Sepolia | React + Express with Crossmint smart wallet UI integration | Intermediate |
+| [ping-relai-crossmint-solana](./ping-relai-crossmint-solana/) | Solana | Crossmint smart wallet + RelAI facilitator, pre-broadcast verification | Intermediate |
 | [pingpong-solana-x402](./pingpong-solana-x402/) | Solana Devnet | React + Cloudflare Worker, Solana USDC via facilitator | Intermediate |
 
 **Start with:** `ping` for pure backend, `ping-crossmint` for full-stack
