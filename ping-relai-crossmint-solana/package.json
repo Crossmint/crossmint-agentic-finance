@@ -1,0 +1,33 @@
+{
+  "name": "ping-relai-crossmint-solana",
+  "version": "1.0.0",
+  "description": "Solana x402 paywall with RelAI facilitator + Crossmint smart wallet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:server": "tsx src/server.ts",
+    "dev:client": "tsx src/client.ts",
+    "build": "tsc -p tsconfig.json",
+    "start:server": "node dist/server.js",
+    "start:client": "node dist/client.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@relai-fi/x402": "file:../../relai-sdk",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^20.19.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
