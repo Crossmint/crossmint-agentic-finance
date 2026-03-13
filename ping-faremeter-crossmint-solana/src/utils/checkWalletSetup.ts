@@ -23,8 +23,8 @@ export async function checkWalletSetup(
 
   if (solBalance === 0) {
     console.error("❌ Wallet has no SOL for transaction fees!");
-    console.log(`   Get devnet SOL from: https://faucet.solana.com/`);
-    console.log(`   Or use: solana airdrop 2 ${walletPublicKey.toBase58()} --url devnet`);
+    console.log(`   Fund your wallet with SOL on Solana mainnet.`);
+    console.log(`   Wallet address: ${walletPublicKey.toBase58()}`);
     return false;
   } else {
     console.log("✅ SOL balance sufficient for fees");
@@ -50,9 +50,8 @@ export async function checkWalletSetup(
 
       if (tokenBalance === 0) {
         console.error("❌ Token account exists but has 0 balance!");
-        console.log(`   Fund your wallet with USDC on devnet:`);
-        console.log(`   - Use https://spl-token-faucet.com/ for devnet USDC`);
-        console.log(`   - Or swap SOL for USDC on devnet DEX`);
+        console.log(`   Fund your wallet with USDC on Solana mainnet.`);
+        console.log(`   Wallet address: ${walletPublicKey.toBase58()}`);
         return false;
       } else if (tokenBalance < minimumTokenAmount) {
         console.error(`❌ Token balance too low! Need at least ${minimumTokenAmount}`);
@@ -64,9 +63,8 @@ export async function checkWalletSetup(
     } catch (accountError: any) {
       if (accountError.message?.includes("could not find account")) {
         console.error("❌ Token account does not exist!");
-        console.log(`\n   To create the token account, run:`);
-        console.log(`   spl-token create-account ${mint.toBase58()} --owner ${walletPublicKey.toBase58()} --url devnet`);
-        console.log(`\n   Or the account will be auto-created when you receive tokens.`);
+        console.log(`\n   The token account will be auto-created when you receive tokens.`);
+        console.log(`   Send USDC to wallet: ${walletPublicKey.toBase58()}`);
         return false;
       }
       throw accountError;

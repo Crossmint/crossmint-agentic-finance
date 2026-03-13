@@ -10,7 +10,7 @@ import { Keypair } from "@solana/web3.js";
 const crossmintApiKey = process.env.CROSSMINT_API_KEY;
 const crossmintWallet = process.env.CROSSMINT_WALLET;
 const payerKeypairPath = process.env.PAYER_KEYPAIR_PATH;
-const environment = process.env.CROSSMINT_ENVIRONMENT ?? "staging";
+const environment = process.env.CROSSMINT_ENVIRONMENT ?? "production";
 
 if (!crossmintApiKey || !crossmintWallet || !payerKeypairPath) {
   console.error("Missing required environment variables:");

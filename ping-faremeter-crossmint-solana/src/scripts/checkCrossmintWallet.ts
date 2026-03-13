@@ -6,7 +6,7 @@ import "dotenv/config";
 
 const crossmintApiKey = process.env.CROSSMINT_API_KEY;
 const crossmintWallet = process.env.CROSSMINT_WALLET;
-const environment = process.env.CROSSMINT_ENVIRONMENT ?? "staging";
+const environment = process.env.CROSSMINT_ENVIRONMENT ?? "production";
 
 if (!crossmintApiKey || !crossmintWallet) {
   console.error("Missing CROSSMINT_API_KEY or CROSSMINT_WALLET");

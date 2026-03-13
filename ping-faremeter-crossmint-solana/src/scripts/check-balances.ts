@@ -6,9 +6,6 @@ const USDC_DEVNET = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'
 const USDC_MAINNET = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
 const ACCOUNTS = [
-  { name: 'admin', address: '9sHHeCu5t4Krns3ukcDdehPPBN9wJBY4Tho6j1qMKfg3' },
-  { name: 'payer', address: 'AGsuEx7onpV1n4GJRvZuPLxMNnD7GzMJQociE3rwoNGU' },
-  { name: 'payto', address: '95ZiDyYRVxdS5frkSHpv8siizRuE5pSsoT9x19VaRLXu' },
   ...(process.env.CROSSMINT_WALLET ? [{ name: 'crossmint-wallet', address: process.env.CROSSMINT_WALLET }] : [])
 ];
 
@@ -49,8 +46,8 @@ async function checkBalances(network: string, rpcUrl: string, usdcMint: PublicKe
 async function main() {
   console.log('\n🔍 Checking Solana Account Balances...\n');
 
-  await checkBalances('devnet', 'https://api.devnet.solana.com', USDC_DEVNET);
-  await checkBalances('mainnet', 'https://api.mainnet-beta.solana.com', USDC_MAINNET);
+  const rpcUrl = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
+  await checkBalances('mainnet', rpcUrl, USDC_MAINNET);
 
   console.log(`\n${'='.repeat(60)}\n`);
 }

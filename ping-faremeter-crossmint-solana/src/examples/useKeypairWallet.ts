@@ -21,7 +21,7 @@ const keypair = Keypair.fromSecretKey(secretKey);
 
 console.log(`Using wallet: ${keypair.publicKey.toBase58()}`);
 
-const network = "devnet";
+const network = (process.env.NETWORK || "mainnet-beta") as "devnet" | "mainnet-beta";
 const splTokenName = "USDC";
 
 const usdcInfo = lookupKnownSPLToken(network, splTokenName);
@@ -37,7 +37,7 @@ const wallet = await createKeypairWallet(network, keypair);
 
 // Check if wallet is set up properly before attempting payment
 const { checkWalletSetup } = await import("../utils/checkWalletSetup.js");
-const isSetup = await checkWalletSetup(connection, keypair.publicKey, mint, 10000); // Check for at least 0.01 USDC
+const isSetup = await checkWalletSetup(connection, keypair.publicKey, mint, 5000); // Check for at least 0.005 USDC (one perftest payment)
 
 if (!isSetup) {
   console.error("\n❌ Wallet is not properly set up for payments. Please fix the issues above and try again.");
@@ -61,6 +61,8 @@ const fetchWithPayer = wrapFetch(fetch, {
 });
 
 // Make a request that will use the keypair wallet for payment
-const req = await fetchWithPayer("http://127.0.0.1:3000/protected");
+const resourceUrl = process.env.CROSSMINT_RESOURCE_URL ?? "https://perftest.api.corbits.dev/protected";
+console.log(`\nResource URL: ${resourceUrl}`);
+const req = await fetchWithPayer(resourceUrl);
 
 await logResponse(req);

@@ -9,7 +9,7 @@ import { Keypair } from "@solana/web3.js";
 
 const crossmintApiKey = process.env.CROSSMINT_API_KEY;
 const payerKeypairPath = process.env.PAYER_KEYPAIR_PATH;
-const environment = process.env.CROSSMINT_ENVIRONMENT ?? "staging";
+const environment = process.env.CROSSMINT_ENVIRONMENT ?? "production";
 
 if (!crossmintApiKey || !payerKeypairPath) {
   console.error("Missing required environment variables:");
@@ -23,7 +23,7 @@ const baseUrl =
     ? "https://www.crossmint.com/api"
     : "https://staging.crossmint.com/api";
 
-const network = environment === "production" ? "solana-mainnet" : "solana-devnet";
+const network = environment === "production" ? "solana" : "solana-devnet";
 
 console.log("\n=== Create Crossmint Delegated Wallet ===\n");
 console.log(`Environment: ${environment}`);

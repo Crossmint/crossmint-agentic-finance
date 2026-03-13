@@ -14,7 +14,7 @@ if (!crossmintWallet || !crossmintApi || !rpcUrl) {
   throw new Error("CROSSMINT_WALLET, CROSSMINT_API_KEY, and RPC_URL must be set in your environment");
 }
 
-const network = "devnet";
+const network = "mainnet-beta";
 
 const splTokenName = "USDC";
 
@@ -27,7 +27,7 @@ const connection = new Connection(rpcUrl);
 
 const mint = new PublicKey(usdcInfo.address);
 const wallet = await createCrossmintWallet(
-  "devnet",
+  "mainnet-beta",
   crossmintApi,
   crossmintWallet,
 );
@@ -42,6 +42,7 @@ const fetchWithPayer = wrapFetch(fetch, {
   })],
 });
 
-const req = await fetchWithPayer("http://127.0.0.1:3000/protected");
+const resourceUrl = process.env.CROSSMINT_RESOURCE_URL ?? "https://perftest.api.corbits.dev/protected";
+const req = await fetchWithPayer(resourceUrl);
 
 await logResponse(req);

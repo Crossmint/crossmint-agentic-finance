@@ -10,7 +10,7 @@ import { checkWalletSetup } from "../utils/checkWalletSetup.js";
 const smartWalletAddress = process.env.CROSSMINT_WALLET;
 const payerKeypairPath = process.env.PAYER_KEYPAIR_PATH;
 const crossmintApiKey = process.env.CROSSMINT_API_KEY;
-const environment = (process.env.CROSSMINT_ENVIRONMENT as "staging" | "production") ?? "staging";
+const environment = (process.env.CROSSMINT_ENVIRONMENT as "staging" | "production") ?? "production";
 const rpcUrl = process.env.RPC_URL;
 
 if (!smartWalletAddress || !payerKeypairPath || !crossmintApiKey || !rpcUrl) {
@@ -41,7 +41,7 @@ const wallet = await createCrossmintDelegatedWallet({
 console.log(`\nWallet public key: ${wallet.publicKey.toBase58()}`);
 
 // Setup Solana connection and token info
-const network = (process.env.NETWORK || (environment === "production" ? "mainnet-beta" : "devnet")) as KnownCluster;
+const network = (process.env.NETWORK || "mainnet-beta") as KnownCluster;
 const splTokenName = "USDC";
 
 const usdcInfo = lookupKnownSPLToken(network, splTokenName);
@@ -54,7 +54,7 @@ const mint = new PublicKey(usdcInfo.address);
 
 // Check if wallet is set up properly before attempting payment
 console.log("\n=== Checking Wallet Setup ===");
-const isSetup = await checkWalletSetup(connection, wallet.publicKey, mint, 10000); // Check for at least 0.01 USDC
+const isSetup = await checkWalletSetup(connection, wallet.publicKey, mint, 5000); // Check for at least 0.005 USDC (one perftest payment)
 
 if (!isSetup) {
   console.error("\n❌ Wallet is not properly set up for payments.");
@@ -83,7 +83,7 @@ const fetchWithPayer = wrapFetch(fetch, {
 
 // Make a request that will use the delegated wallet for payment
 console.log("=== Making Payment Request ===");
-const resourceUrl = process.env.CROSSMINT_RESOURCE_URL ?? "http://127.0.0.1:3000/protected";
+const resourceUrl = process.env.CROSSMINT_RESOURCE_URL ?? "https://perftest.api.corbits.dev/protected";
 console.log(`Resource URL: ${resourceUrl}\n`);
 
 const req = await fetchWithPayer(resourceUrl);
